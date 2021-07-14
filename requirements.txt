@@ -4,8 +4,10 @@ iopath
 flake8
 matplotlib
 numpy
-opencv-python==4.2.0.34
+opencv-python==4.5.2.54
 parameterized
 setuptools
 simplejson
 yacs
+timm
+wandb

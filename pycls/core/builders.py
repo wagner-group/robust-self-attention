@@ -13,10 +13,13 @@ from pycls.models.anynet import AnyNet
 from pycls.models.effnet import EffNet
 from pycls.models.regnet import RegNet
 from pycls.models.resnet import ResNet
+from pycls.models.vision_transformer import VisionTransformer
+from pycls.models.bagnet import BagNet, ClippedBagNet
 
 
 # Supported models
-_models = {"anynet": AnyNet, "effnet": EffNet, "resnet": ResNet, "regnet": RegNet}
+_models = {"anynet": AnyNet, "effnet": EffNet, "resnet": ResNet, "regnet": RegNet,
+           "vision_transformer": VisionTransformer, "bagnet": BagNet, "clippedbagnet": ClippedBagNet}
 
 # Supported loss functions
 _loss_funs = {"cross_entropy": SoftCrossEntropyLoss}

@@ -1,0 +1,45 @@
+MODEL:
+  TYPE: vision_transformer
+  NUM_CLASSES: 100
+VIT:
+  EMBED_DIM: 384
+  NUM_HEADS: 6
+OPTIM:
+  OPTIMIZER: adamw
+  BASE_LR: 5e-6
+  LR_POLICY: steps
+  STEPS: [0, 20]
+  MAX_EPOCH: 40
+  WEIGHT_DECAY: 5e-3
+TRAIN:
+  AUTO_RESUME: True
+  DATASET: imagenet
+  SPLIT: train
+  BATCH_SIZE: 256
+  IM_SIZE: 224
+  WEIGHTS: ./vitsmall_100.pt
+ADV:
+  TRAIN_ATTACK: patchpgd
+  TRAIN_NUM_STEPS: 10
+  TRAIN_STEP_SIZE: 0.25
+  TRAIN_PATCH_SIZES: [10, 50]
+  VAL_ATTACK: patchpgd
+  VAL_NUM_STEPS: 40
+  VAL_STEP_SIZE: 0.02
+  VAL_PATCH_SIZE: 50
+  VAL_NUM_RESTARTS: 1
+TEST:
+  DATASET: imagenet
+  SPLIT: val
+  BATCH_SIZE: 512
+  IM_SIZE: 224
+NUM_GPUS: 8
+DATA_LOADER:
+  NUM_WORKERS: 10
+CUDNN:
+  BENCHMARK: True
+LOG_PERIOD: 100
+LOG_DEST: stdout
+OUT_DIR: ./outputs/patchadv/train_vit_adv
+WANDB:
+  ENABLED: False

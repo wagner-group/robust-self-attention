@@ -11,6 +11,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from pycls.core.config import cfg
+import pycls.core.logging as logging
+
+
+logger = logging.get_logger(__name__)
+
+
+def substrings(name, strs):
+    for s in strs:
+        if s in name:
+            return True
+    return False
 
 
 def construct_optimizer(model):
@@ -34,24 +45,72 @@ def construct_optimizer(model):
     when the learning rate is changed there is no need to perform the
     momentum correction by scaling V (unlike in the Caffe2 case).
     """
+    named_params = list(model.named_parameters())
+    if cfg.OPTIM.TRAINABLE_PARAMS:
+        named_params = []
+        for n, p in model.named_parameters():
+            if substrings(n, cfg.OPTIM.TRAINABLE_PARAMS):
+                named_params.append((n, p))
+            else:
+                p.requires_grad = False
+        logger.info("Restricting training to: {}".format([n for n, _ in named_params]))
+
+    weight_decays = {"default": [n for n, _ in named_params],
+                     "bn": [], "off": []}
+
+    if cfg.OPTIM.NO_WEIGHT_DECAY_PARAMS:
+        p_wd = [n for n, _ in weight_decays["default"] if not substrings(n, cfg.OPTIM.NO_WEIGHT_DECAY_PARAMS)]
+        p_non_wd = [n for n, _ in weight_decays["default"] if substrings(n, cfg.OPTIM.NO_WEIGHT_DECAY_PARAMS)]
+
+        weight_decays["default"] = p_wd
+        weight_decays["off"] = p_non_wd
+
     if cfg.BN.USE_CUSTOM_WEIGHT_DECAY:
         # Apply different weight decay to Batchnorm and non-batchnorm parameters.
-        p_bn = [p for n, p in model.named_parameters() if "bn" in n]
-        p_non_bn = [p for n, p in model.named_parameters() if "bn" not in n]
-        optim_params = [
-            {"params": p_bn, "weight_decay": cfg.BN.CUSTOM_WEIGHT_DECAY},
-            {"params": p_non_bn, "weight_decay": cfg.OPTIM.WEIGHT_DECAY},
-        ]
+        p_bn = [n for n, _ in weight_decays["default"] if "bn" in n]
+        p_non_bn = [n for n, _ in weight_decays["default"] if "bn" not in n]
+
+        weight_decays["default"] = p_non_bn
+        weight_decays["bn"] = p_bn
+
+    default = [p for n, p in named_params if n in weight_decays["default"]]
+    bn = [p for n, p in named_params if n in weight_decays["bn"]]
+    off = [p for n, p in named_params if n in weight_decays["off"]]
+
+    optim_params = [{"params": default, "weight_decay": cfg.OPTIM.WEIGHT_DECAY}]
+    if len(bn) > 0:
+        optim_params.append({"params": bn, "weight_decay": cfg.BN.CUSTOM_WEIGHT_DECAY})
+    if len(off) > 0:
+        optim_params.append({"params": off, "weight_decay": 0})
+
+    if cfg.OPTIM.OPTIMIZER == "sgd":
+        return torch.optim.SGD(
+            optim_params,
+            lr=cfg.OPTIM.BASE_LR,
+            momentum=cfg.OPTIM.MOMENTUM,
+            weight_decay=cfg.OPTIM.WEIGHT_DECAY,
+            dampening=cfg.OPTIM.DAMPENING,
+            nesterov=cfg.OPTIM.NESTEROV,
+        )
+    elif cfg.OPTIM.OPTIMIZER == "adam":
+        return torch.optim.Adam(
+            optim_params,
+            lr=cfg.OPTIM.BASE_LR,
+            betas=cfg.OPTIM.BETAS,
+            eps=cfg.OPTIM.EPS,
+            weight_decay=cfg.OPTIM.WEIGHT_DECAY,
+        )
+    elif cfg.OPTIM.OPTIMIZER == "adamw":
+        return torch.optim.AdamW(
+            optim_params,
+            lr=cfg.OPTIM.BASE_LR,
+            betas=cfg.OPTIM.BETAS,
+            eps=cfg.OPTIM.EPS,
+            weight_decay=cfg.OPTIM.WEIGHT_DECAY,
+        )
+
     else:
-        optim_params = model.parameters()
-    return torch.optim.SGD(
-        optim_params,
-        lr=cfg.OPTIM.BASE_LR,
-        momentum=cfg.OPTIM.MOMENTUM,
-        weight_decay=cfg.OPTIM.WEIGHT_DECAY,
-        dampening=cfg.OPTIM.DAMPENING,
-        nesterov=cfg.OPTIM.NESTEROV,
-    )
+        raise Exception("Unknown optimizer: {}".format(cfg.OPTIM.OPTIMIZER))
 
 
 def lr_fun_steps(cur_epoch):

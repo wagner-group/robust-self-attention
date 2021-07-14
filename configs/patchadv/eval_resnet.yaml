@@ -1,0 +1,30 @@
+MODEL:
+  TYPE: resnet
+  DEPTH: 50
+  NUM_CLASSES: 100
+RESNET:
+  TRANS_FUN: bottleneck_transform
+  NUM_GROUPS: 1
+  WIDTH_PER_GROUP: 64
+  STRIDE_1X1: False
+ADV:
+  VAL_ATTACK: patchautopgdgrid
+  VAL_NUM_STEPS: 100
+  VAL_PATCH_SIZE: 10
+  VAL_PATCH_STRIDE: 20
+  VAL_VERBOSE: True
+TEST:
+  DATASET: imagenet
+  SPLIT: val
+  NUM_IMAGES: 512
+  BATCH_SIZE: 512
+  IM_SIZE: 224
+  WEIGHTS: ./resnet50_100.pt
+NUM_GPUS: 8
+DATA_LOADER:
+  NUM_WORKERS: 10
+CUDNN:
+  BENCHMARK: True
+LOG_PERIOD: 1
+LOG_DEST: stdout
+OUT_DIR: outputs/patchadv/eval_resnet

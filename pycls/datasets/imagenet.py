@@ -8,7 +8,6 @@
 """ImageNet dataset."""
 
 import os
-import re
 
 import cv2
 import numpy as np
@@ -19,11 +18,6 @@ from pycls.core.config import cfg
 
 
 logger = logging.get_logger(__name__)
-
-# Per-channel mean and standard deviation values on ImageNet (in RGB order)
-# https://github.com/facebookarchive/fb.resnet.torch/blob/master/datasets/imagenet.lua
-_MEAN = [0.485, 0.456, 0.406]
-_STD = [0.229, 0.224, 0.225]
 
 # Constants for lighting normalization on ImageNet (in RGB order)
 # https://github.com/facebookarchive/fb.resnet.torch/blob/master/datasets/imagenet.lua
@@ -40,8 +34,6 @@ class ImageNet(torch.utils.data.Dataset):
 
     def __init__(self, data_path, split):
         assert os.path.exists(data_path), "Data path '{}' not found".format(data_path)
-        splits = ["train", "val"]
-        assert split in splits, "Split '{}' not supported for ImageNet".format(split)
         logger.info("Constructing ImageNet {}...".format(split))
         self._data_path, self._split = data_path, split
         self._construct_imdb()
@@ -52,8 +44,12 @@ class ImageNet(torch.utils.data.Dataset):
         split_path = os.path.join(self._data_path, self._split)
         logger.info("{} data path: {}".format(self._split, split_path))
         # Images are stored per class in subdirs (format: n<number>)
-        split_files = os.listdir(split_path)
-        self._class_ids = sorted(f for f in split_files if re.match(r"^n[0-9]+$", f))
+        self._class_ids = sorted(filter(lambda d: os.path.isdir(os.path.join(split_path, d)),
+                                        os.listdir(split_path)))
+        self._class_ids = np.array(self._class_ids)
+        np.random.seed(0)
+        classes = np.sort(np.random.permutation(len(self._class_ids))[:cfg.MODEL.NUM_CLASSES])
+        self._class_ids = self._class_ids[classes]
         # Map ImageNet class ids to contiguous ids
         self._class_id_cont_id = {v: i for i, v in enumerate(self._class_ids)}
         # Construct the image db
@@ -64,6 +60,9 @@ class ImageNet(torch.utils.data.Dataset):
             for im_name in os.listdir(im_dir):
                 im_path = os.path.join(im_dir, im_name)
                 self._imdb.append({"im_path": im_path, "class": cont_id})
+        if self._split == 'val' and cfg.TEST.NUM_IMAGES > 0:
+            image_ids = np.random.permutation(len(self._imdb))[:cfg.TEST.NUM_IMAGES]
+            self._imdb = [self._imdb[i] for i in image_ids]
         logger.info("Number of images: {}".format(len(self._imdb)))
         logger.info("Number of classes: {}".format(len(self._class_ids)))
 
@@ -83,9 +82,11 @@ class ImageNet(torch.utils.data.Dataset):
             # For testing use scale and center crop
             im = transforms.scale_and_center_crop(im, test_size, train_size)
         # For training and testing use color normalization
-        im = transforms.color_norm(im, _MEAN, _STD)
+        im = transforms.color_norm(im, cfg.DATA_LOADER.MEAN, cfg.DATA_LOADER.STD)
         # Convert HWC/RGB/float to CHW/BGR/float format
-        im = np.ascontiguousarray(im[:, :, ::-1].transpose([2, 0, 1]))
+        if cfg.DATA_LOADER.BGR:
+            im = im[:, :, ::-1]
+        im = np.ascontiguousarray(im).transpose([2, 0, 1])
         return im
 
     def __getitem__(self, index):

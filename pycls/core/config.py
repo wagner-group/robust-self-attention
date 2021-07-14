@@ -45,6 +45,10 @@ _C.MODEL.ACTIVATION_INPLACE = True
 _C.MODEL.SCALING_TYPE = ""
 _C.MODEL.SCALING_FACTOR = 1.0
 
+# Load timm (pytorch-image-models) model
+_C.MODEL.TIMM_MODEL = ""
+_C.MODEL.TIMM_PRETRAINED = False
+
 
 # ---------------------------------- ResNet options ---------------------------------- #
 _C.RESNET = CfgNode()
@@ -174,6 +178,60 @@ _C.EN.DC_RATIO = 0.0
 _C.EN.DROPOUT_RATIO = 0.0
 
 
+# ------------------------------- Vision Transformer options ------------------------------- #
+_C.VIT = CfgNode()
+
+# Patch size
+_C.VIT.PATCH_SIZE = 16
+
+# Constant embed/feature dim
+_C.VIT.EMBED_DIM = 768
+
+# Number of attention layers. MODEL.DEPTH is used for ResNet embed
+_C.VIT.DEPTH = 12
+
+# Number of MSA heads
+_C.VIT.NUM_HEADS = 12
+
+# Ratio of mlp dim to embed dim
+_C.VIT.MLP_RATIO = 4
+
+# Enable bias param in QKV computation
+_C.VIT.QKV_BIAS = True
+
+# Override default QK scale of embed dim ** -0.5 if set
+_C.VIT.QK_SCALE = None
+
+# Dropout rate
+_C.VIT.DROP_RATE = 0
+
+# Attention dropout rate
+_C.VIT.ATTN_DROP_RATE = 0
+
+# Stochastic depth rate
+_C.VIT.DROP_PATH_RATE = 0.1
+
+# Robust attention method
+_C.VIT.ROBUST_ATTN = None
+
+# Use ResNet model (per ResNet configs) for input features
+_C.VIT.RESNET_EMBED = False
+
+
+# ------------------------------- BagNet options ------------------------------- #
+_C.BAGNET = CfgNode()
+
+_C.BAGNET.LAYERS = [3, 4, 6, 3]
+
+_C.BAGNET.STRIDES = [2, 2, 2, 1]
+
+_C.BAGNET.KERNEL3 = [1, 1, 1, 1]
+
+_C.BAGNET.CLIP_A = 0.05
+
+_C.BAGNET.CLIP_B = -1
+
+
 # -------------------------------- Batch norm options -------------------------------- #
 _C.BN = CfgNode()
 
@@ -232,6 +290,20 @@ _C.OPTIM.WARMUP_FACTOR = 0.1
 # Gradually warm up the OPTIM.BASE_LR over this number of epochs
 _C.OPTIM.WARMUP_EPOCHS = 0
 
+_C.OPTIM.OPTIMIZER = "sgd"
+
+_C.OPTIM.BETAS = (0.9, 0.999)
+
+_C.OPTIM.EPS = 1e-08
+
+# Skip weight decay on param names containing these strings
+_C.OPTIM.NO_WEIGHT_DECAY_PARAMS = []
+
+# If populated, only train params containing these strings
+# and sets find_unused_parameters to true in DDP constructor
+# Takes precedent over custom BN weight decay.
+_C.OPTIM.TRAINABLE_PARAMS = []
+
 
 # --------------------------------- Training options --------------------------------- #
 _C.TRAIN = CfgNode()
@@ -268,6 +340,53 @@ _C.TRAIN.PCA_STD = 0.1
 _C.TRAIN.AUGMENT = ""
 
 
+# --------------------------------- Adversarial training options --------------------- #
+_C.ADV = CfgNode()
+
+# Training attack {patchpgd}
+_C.ADV.TRAIN_ATTACK = ""
+
+# Range for training patch size if 2-item list
+# Single training patch size if 1-item list
+_C.ADV.TRAIN_PATCH_SIZES = []
+
+# Training attack steps
+_C.ADV.TRAIN_NUM_STEPS = 10
+
+# Training attack step size
+_C.ADV.TRAIN_STEP_SIZE = .25
+
+# Training num restarts
+_C.ADV.TRAIN_NUM_RESTARTS = 1
+
+# Grid align patches during training on patchpgd or patchautogpd
+_C.ADV.TRAIN_GRID_ALIGNED = False
+
+# Eval attack {patchpgd, patchpgdgrid, patchautopgd, patchautopgdgrid}
+_C.ADV.VAL_ATTACK = ""
+
+# Eval patch sizes
+_C.ADV.VAL_PATCH_SIZE = 50
+
+# Eval patch stride (for patchpgdgrid, patchautopgdgrid)
+_C.ADV.VAL_PATCH_STRIDE = 20
+
+# Eval attack steps
+_C.ADV.VAL_NUM_STEPS = 40
+
+# Eval step size
+_C.ADV.VAL_STEP_SIZE = .25
+
+# Eval num restarts
+_C.ADV.VAL_NUM_RESTARTS = 1
+
+# Grid align patches during eval on patchpgd or patchautogpd
+_C.ADV.VAL_GRID_ALIGNED = False
+
+# Print verbose debug messages during eval
+_C.ADV.VAL_VERBOSE = False
+
+
 # --------------------------------- Testing options ---------------------------------- #
 _C.TEST = CfgNode()
 
@@ -284,6 +403,12 @@ _C.TEST.IM_SIZE = 256
 # Weights to use for testing
 _C.TEST.WEIGHTS = ""
 
+# Number of val images to test on. -1 returns entire val set.
+_C.TEST.NUM_IMAGES = -1
+
+# Evaluate with mixed precision
+_C.TEST.MIXED_PRECISION = False
+
 
 # ------------------------------- Data loader options -------------------------------- #
 _C.DATA_LOADER = CfgNode()
@@ -294,6 +419,13 @@ _C.DATA_LOADER.NUM_WORKERS = 8
 # Load data to pinned host memory
 _C.DATA_LOADER.PIN_MEMORY = True
 
+# Per-channel mean and standard deviation values on ImageNet (in RGB order)
+# https://github.com/facebookarchive/fb.resnet.torch/blob/master/datasets/imagenet.lua
+_C.DATA_LOADER.MEAN = [0.485, 0.456, 0.406]
+_C.DATA_LOADER.STD = [0.229, 0.224, 0.225]
+
+# Load images as BGR (True) or RGB (False)
+_C.DATA_LOADER.BGR = False
 
 # ---------------------------------- CUDNN options ----------------------------------- #
 _C.CUDNN = CfgNode()
@@ -310,6 +442,19 @@ _C.PREC_TIME.WARMUP_ITER = 3
 
 # Number of iterations to compute avg time
 _C.PREC_TIME.NUM_ITER = 30
+
+
+# ---------------------------------- WandB options ----------------------------------- #
+_C.WANDB = CfgNode()
+
+# Enable WandB logging
+_C.WANDB.ENABLED = False
+
+# WandB run info
+_C.WANDB.ENTITY = None
+_C.WANDB.PROJECT = "robust-self-attention"
+_C.WANDB.GROUP = None
+_C.WANDB.RUN_ID = None
 
 
 # ----------------------------------- Misc options ----------------------------------- #
@@ -368,10 +513,6 @@ def assert_and_infer_cfg(cache_urls=True):
     """Checks config values invariants."""
     err_str = "The first lr step must start at 0"
     assert not _C.OPTIM.STEPS or _C.OPTIM.STEPS[0] == 0, err_str
-    data_splits = ["train", "val", "test"]
-    err_str = "Data split '{}' not supported"
-    assert _C.TRAIN.SPLIT in data_splits, err_str.format(_C.TRAIN.SPLIT)
-    assert _C.TEST.SPLIT in data_splits, err_str.format(_C.TEST.SPLIT)
     err_str = "Mini-batch size should be a multiple of NUM_GPUS."
     assert _C.TRAIN.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
     assert _C.TEST.BATCH_SIZE % _C.NUM_GPUS == 0, err_str
@@ -406,16 +547,29 @@ def reset_cfg():
     _C.merge_from_other_cfg(_CFG_DEFAULT)
 
 
-def load_cfg_fom_args(description="Config file options."):
+def load_cfg_fom_args(description="Config file options.", args=None):
     """Load config from command line arguments and set any specified options."""
-    parser = argparse.ArgumentParser(description=description)
-    help_s = "Config file location"
-    parser.add_argument("--cfg", dest="cfg_file", help=help_s, required=True, type=str)
-    help_s = "See pycls/core/config.py for all options"
-    parser.add_argument("opts", help=help_s, default=None, nargs=argparse.REMAINDER)
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-    args = parser.parse_args()
+    if args is None:
+        parser = argparse.ArgumentParser(description=description)
+        help_s = "Config file location"
+        parser.add_argument("--cfg", dest="cfg_file", help=help_s, required=True, type=str)
+        help_s = "See pycls/core/config.py for all options"
+        parser.add_argument("opts", help=help_s, default=None, nargs=argparse.REMAINDER)
+        if len(sys.argv) == 1:
+            parser.print_help()
+            sys.exit(1)
+        args = parser.parse_args()
     load_cfg(args.cfg_file)
     _C.merge_from_list(args.opts)
+
+
+def to_dict(cfg):
+    ret = {}
+    for k, v in cfg.items():
+        if isinstance(v, CfgNode):
+            for k1, v1 in to_dict(v).items():
+                ret[k + '.' + k1] = v1
+        else:
+            ret[k] = v
+
+    return ret

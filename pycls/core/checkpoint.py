@@ -14,6 +14,7 @@ import torch
 from pycls.core.config import cfg
 from pycls.core.io import pathmgr
 from pycls.core.net import unwrap_model
+import pycls.core.logging as logging
 
 
 # Common prefix for checkpoint file names
@@ -21,6 +22,8 @@ _NAME_PREFIX = "model_epoch_"
 
 # Checkpoints directory name
 _DIR_NAME = "checkpoints"
+
+logger = logging.get_logger(__name__)
 
 
 def get_checkpoint_dir():
@@ -85,9 +88,33 @@ def load_checkpoint(checkpoint_file, model, optimizer=None):
     assert pathmgr.exists(checkpoint_file), err_str.format(checkpoint_file)
     with pathmgr.open(checkpoint_file, "rb") as f:
         checkpoint = torch.load(f, map_location="cpu")
-    unwrap_model(model).load_state_dict(checkpoint["model_state"])
-    optimizer.load_state_dict(checkpoint["optimizer_state"]) if optimizer else ()
-    return checkpoint["epoch"]
+    if "model_state" in checkpoint:
+        ckpt = checkpoint["model_state"]
+    elif "model" in checkpoint:
+        ckpt = checkpoint["model"]
+    else:
+        ckpt = checkpoint
+
+    # Skip loading fc layer if finetuning on different # classes
+    fc_key = "head.fc"
+    if cfg.MODEL.TYPE == "vision_transformer":
+        fc_key = "head"
+
+    weight_key = fc_key + ".weight"
+    bias_key = fc_key + ".bias"
+    if weight_key in ckpt and ckpt[weight_key].size(0) != cfg.MODEL.NUM_CLASSES:
+        logger.info('Skipped loading fc layer due to mismatch between model and weights num classes.')
+        del ckpt[weight_key]
+        if bias_key in ckpt:
+            del ckpt[bias_key]
+
+    res = unwrap_model(model).load_state_dict(ckpt, strict=False)
+    logger.info("Model load completed: {}".format(res))
+    if "optimizer_state" in checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer_state"]) if optimizer else ()
+    if "epoch" in checkpoint:
+        return checkpoint["epoch"]
+    return 0
 
 
 def delete_checkpoints(checkpoint_dir=None, keep="all"):

@@ -1,62 +1,62 @@
-# pycls
+# Robust Self Attention
 
-**pycls** is an image classification codebase, written in [PyTorch](https://pytorch.org/). It was originally developed for the [On Network Design Spaces for Visual Recognition](https://arxiv.org/abs/1905.13214) project. **pycls** has since matured and been adopted by a number of [projects](#projects) at Facebook AI Research.
+This repo is based on the [pycls](https://github.com/facebookresearch/pycls) project.
+If you already have pycls installed you will need to create a new python environment to install this codebase.
+Most original pycls functionality should remain intact however, this has not been thoroughly tested.
 
-<div align="center">
-  <img src="docs/regnetx_nets.png" width="550px" />
-  <p align="center"><b>pycls</b> provides a large set of baseline models across a wide range of flop regimes.</p>
-</div>
 
-## Introduction
+## Setup
 
-The goal of **pycls** is to provide a simple and flexible codebase for image classification. It is designed to support rapid implementation and evaluation of research ideas. **pycls** also provides a large collection of baseline results ([Model Zoo](MODEL_ZOO.md)).
+### Code
 
-The codebase supports efficient single-machine multi-gpu training, powered by the PyTorch distributed package, and provides implementations of standard models including [ResNet](https://arxiv.org/abs/1512.03385), [ResNeXt](https://arxiv.org/abs/1611.05431), [EfficientNet](https://arxiv.org/abs/1905.11946), and [RegNet](https://arxiv.org/abs/2003.13678).
-
-## Using pycls
-
-Please see [`GETTING_STARTED`](docs/GETTING_STARTED.md) for brief installation instructions and basic usage examples.
-
-## Model Zoo
-
-We provide a large set of baseline results and pretrained models available for download in the **pycls** [Model Zoo](MODEL_ZOO.md); including the simple, fast, and effective [RegNet](https://arxiv.org/abs/2003.13678) models that we hope can serve as solid baselines across a wide range of flop regimes.
-
-## Projects
-
-A number of projects at FAIR have been built on top of **pycls**:
-
-- [On Network Design Spaces for Visual Recognition](https://arxiv.org/abs/1905.13214)
-- [Exploring Randomly Wired Neural Networks for Image Recognition](https://arxiv.org/abs/1904.01569)
-- [Designing Network Design Spaces](https://arxiv.org/abs/2003.13678)
-- [Are Labels Necessary for Neural Architecture Search?](https://arxiv.org/abs/2003.12056)
-- [PySlowFast Video Understanding Codebase](https://github.com/facebookresearch/SlowFast)
-
-If you are using **pycls** in your research and would like to include your project here, please let us know or send a PR.
-
-## Citing pycls
-
-If you find **pycls** helpful in your research or refer to the baseline results in the [Model Zoo](MODEL_ZOO.md), please consider citing an appropriate subset of the following papers:
+Clone the repository:
 
 ```
-@InProceedings{Radosavovic2019,
-  title = {On Network Design Spaces for Visual Recognition},
-  author = {Radosavovic, Ilija and Johnson, Justin and Xie, Saining and Lo, Wan-Yen and Doll{\'a}r, Piotr},
-  booktitle = {ICCV},
-  year = {2019}
-}
-
-@InProceedings{Radosavovic2020,
-  title = {Designing Network Design Spaces},
-  author = {Radosavovic, Ilija and Kosaraju, Raj Prateek and Girshick, Ross and He, Kaiming and Doll{\'a}r, Piotr},
-  booktitle = {CVPR},
-  year = {2020}
-}
+git clone https://github.com/wagner-group/robust-self-attention
 ```
 
-## License
+Install PyTorch from [pytorch.org](https://pytorch.org).
 
-**pycls** is released under the MIT license. Please see the [LICENSE](LICENSE) file for more information.
+Install additional dependencies:
 
-## Contributing
+```
+pip install -r requirements.txt
+```
 
-We actively welcome your pull requests! Please see [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](docs/CODE_OF_CONDUCT.md) for more info.
+Set up modules:
+
+```
+python setup.py develop --user
+```
+
+### Data
+
+Please see [`DATA.md`](./docs/DATA.md) for setting up the ImageNet dataset.
+The ImageNet-100 subset is specified by setting the `MODEL.NUM_CLASSES` config option to 100.
+
+## Evaluation
+```
+python tools/test_net.py --cfg configs/patchadv/eval_resnet.yaml ADV.VAL_PATCH_SIZE 10
+```
+
+## Training
+
+Download ImageNet-100 weights from [here](https://drive.google.com/drive/folders/1_2Od8rMSFqUE9dQn5Nqta6129GK_lqGm?usp=sharing) and adversarially finetune model with:
+
+```
+python tools/train_net.py --cfg configs/patchadv/train_resnet_adv.yaml
+```
+
+Additional evaluation and training configs used in the paper are available in the configs folder.
+
+## Changes
+
+This repo includes several changes to the original pycls functionality:
+
+- support for adversarial training and evaluation
+- WandB logging
+- load RGB images by default instead of BGR
+- more flexible checkpoint loading
+- slurm submission scripts using [submitit](https://github.com/facebookresearch/submitit)
+
+as well as many new options accessible through the config system- see diff history for `config.py` for full list of new options.

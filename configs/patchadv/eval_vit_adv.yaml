@@ -1,0 +1,27 @@
+MODEL:
+  TYPE: vision_transformer
+  NUM_CLASSES: 100
+VIT:
+  EMBED_DIM: 384
+  NUM_HEADS: 6
+ADV:
+  VAL_ATTACK: patchautopgdgrid
+  VAL_NUM_STEPS: 100
+  VAL_PATCH_SIZE: 10
+  VAL_PATCH_STRIDE: 20
+  VAL_VERBOSE: True
+TEST:
+  DATASET: imagenet
+  SPLIT: val
+  NUM_IMAGES: 512
+  BATCH_SIZE: 512
+  IM_SIZE: 224
+  WEIGHTS: ./vitsmall_100_adv.pt
+NUM_GPUS: 8
+DATA_LOADER:
+  NUM_WORKERS: 10
+CUDNN:
+  BENCHMARK: True
+LOG_PERIOD: 1
+LOG_DEST: stdout
+OUT_DIR: outputs/patchadv/eval_vit_adv
